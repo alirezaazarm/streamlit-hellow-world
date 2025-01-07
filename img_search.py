@@ -117,13 +117,24 @@ data = pd.read_csv('/workspaces/streamlit-hellow-world/drive/translated_data.csv
 with open('/workspaces/streamlit-hellow-world/drive/inference.pkl', 'rb') as f:
     inference = pickle.load(f)
 
-image_query = "/workspaces/streamlit-hellow-world/buffer/image.jpg"
-results = inference.search_by_image(image_query, top_k=5)
+def process_image(image_path):
+    print(f"Processing image: {image_path}")
+    results = inference.search_by_image(image_path, top_k=5)
+    
+    print(f"\nResults for image query: '{image_query}'")
+    for i, result in enumerate(results, 1):
+            print(f"\n{i}. Similarity: {result['similarity']:.3f}")
+            print(f"   Image: {result['path']}")
+            print(f"   pID: {result['metadata']['pID']}")
+            print(f"   English Text: {result['metadata']['text']}")
+            persian_title = f" Persian Title: {data.loc[data['pID'] == int(result['metadata']['pID']), 'title'].values[0]}"
 
-print(f"\nResults for image query: '{image_query}'")
-for i, result in enumerate(results, 1):
-        print(f"\n{i}. Similarity: {result['similarity']:.3f}")
-        print(f"   Image: {result['path']}")
-        print(f"   pID: {result['metadata']['pID']}")
-        print(f"   English Text: {result['metadata']['text']}")
-        print(f"   Persian Text: {data.loc[data['pID'] == int(result['metadata']['pID']), 'title'].values[0]}")
+    return persian_title
+
+
+if __name__ == "__main__":
+    test_image = "test_image.jpg"
+    print(process_image(test_image))
+
+
+    
