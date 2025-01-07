@@ -9,8 +9,12 @@ st.write("An app to upload an image and view search logs.")
 
 # Run drive.py to download necessary files
 st.text("Checking for required files...")
-drive_main()
-st.success("Required files are ready.")
+try:
+    drive_main()  # Call the main function in drive.py to handle downloading
+    st.success("All required files are ready.")
+except Exception as e:
+    st.error(f"Error in downloading files: {e}")
+    st.stop()
 
 # Image uploader
 uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"])
