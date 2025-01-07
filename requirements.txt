@@ -2,3 +2,6 @@ streamlit
 pandas
 gdown
 openai
+transformers
+torch
+PIL
