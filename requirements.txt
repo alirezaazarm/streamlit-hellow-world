@@ -1,7 +1,8 @@
+pip==24.3.1
 streamlit
 pandas
 gdown
 openai
 transformers
-torch
+torch==2.0.1
 PIL
