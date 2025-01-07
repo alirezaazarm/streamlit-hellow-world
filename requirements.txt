@@ -4,5 +4,5 @@ pandas
 gdown
 openai
 transformers
-torch==2.0.1
-PIL
+torch==2.2.0
+Pillow
