@@ -4,7 +4,7 @@ import gdown
 def main():
     file_ides = {
         'translated_data.csv': '1Y1DW_sY2mnK8Ty080fRtLQ4shMKHOZCG',
-        'inference.pkl' : '1-1ikhnjrS3ZdDfroa9sDTq4P5mELa0KL',
+        'inference.pkl' : '1rreJiFhdATJrjgNfeyJFgz1oEhFfvveE',
         'products.csv' : '1cZm-MVPCVcvkY0FJ9iZpDjSe9JiPIzm7'
     }
     
