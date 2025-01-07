@@ -81,7 +81,7 @@ def process_image(image_path, top_k=5):
             except:
                 persian_title = "   Persian Title: Not found"
             
-            output_logs.extend([similarity, image_path, pid, eng_text, persian_title])
+            output_logs.extend([similarity, pid, eng_text, persian_title])
         
         return "\n".join(output_logs)
     except Exception as e:
