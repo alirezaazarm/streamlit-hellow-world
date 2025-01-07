@@ -8,11 +8,11 @@ def main():
         'products.csv' : '1cZm-MVPCVcvkY0FJ9iZpDjSe9JiPIzm7'
     }
     
-    os.makedirs('/workspaces/streamlit-hellow-world/drive', exist_ok=True)
+    os.makedirs('./drive', exist_ok=True)
     
     for file in file_ides.keys():
         url = f"https://drive.google.com/uc?id={file_ides[file]}"
-        output = f"/workspaces/streamlit-hellow-world/drive/{file}"
+        output = f"./drive/{file}"
     
         if not os.path.exists(output):
             print(f"Downloading {file} from Google Drive...")
