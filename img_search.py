@@ -77,7 +77,7 @@ def process_image(image_path, top_k=5):
             pid = f"   pID: {result['metadata']['pID']}"
             eng_text = f"   English Text: {result['metadata']['text']}"
             try:
-                persian_title = f"   Persian Title: {data.loc[data['pID'] == int(result['metadata']['pID']), 'title'].values[0]}"
+                persian_title = f"   Persian Title: {data.loc[data['product_id'] == int(result['metadata']['pID']), 'title'].values[0]}"
             except:
                 persian_title = "   Persian Title: Not found"
             
