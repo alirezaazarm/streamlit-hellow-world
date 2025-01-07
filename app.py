@@ -6,6 +6,14 @@ import os
 st.title("Image Search with CLIP")
 st.write("An app to upload an image and view search logs.")
 
+st.text("Checking for required files...")
+try:
+    drive_main()
+    st.success("All required files are ready.")
+except Exception as e:
+    st.error(f"Error in downloading files: {e}")
+    st.stop()
+
 # Add cache for better performance
 @st.cache_resource
 def initialize_app():
