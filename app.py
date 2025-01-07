@@ -1,6 +1,6 @@
-# app.py
 import streamlit as st
 from img_search import process_image
+from drive import main as drive_main
 import os
 
 st.title("Image Search with CLIP")
