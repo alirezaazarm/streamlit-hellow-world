@@ -47,7 +47,7 @@ class CLIPInference:
         return results
 
 def load_inference():
-    with open('drive/inference.pkl', 'rb') as f:
+    with open('./drive/inference.pkl', 'rb') as f:
         
         pickle_data = f.read()
     
@@ -69,7 +69,7 @@ def process_image(image_path, top_k=5):
     try:
         inference = load_inference()
         
-        data = pd.read_csv('drive/translated_data.csv', encoding='utf-8', engine='python')
+        data = pd.read_csv('./drive/translated_data.csv', encoding='utf-8', engine='python')
         
         results = inference.search_by_image(image_path, top_k=5)
         
