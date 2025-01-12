@@ -96,27 +96,36 @@ def main_page():
 
                     # Process the image
                     with st.spinner('Processing image...'):
-                        logs = process_image("uploaded_image.jpg", top_k=5)
-                        st.text("Search Results:")
-                        st.text(logs)
+                        try:
+                            logs = process_image("uploaded_image.jpg", top_k=5)
+                            st.text("Search Results:")
+                            st.text(logs)
+                        except Exception as e:
+                            st.error(f"Error processing image: {e}")
                     
                     # Send results to the assistant
-                    with st.spinner('Sending results to assistant...'):
-                        client.beta.threads.messages.create(
-                            thread_id=st.session_state.thread_id,
-                            role="user",
-                            content=f"Image search results: {logs}"
-                        )
-                        st.success("Results sent to assistant.")
+                    try:
+                        with st.spinner('Sending results to assistant...'):
+                            client.beta.threads.messages.create(
+                                thread_id=st.session_state.thread_id,
+                                role="user",
+                                content=f"Image search results: {logs}"
+                            )
+                            st.success("Results sent to assistant.")
+                    except Exception as e:
+                        st.error(f"Failed to send message to assistant: {e}")
                     
                     # Fetch assistant's response
                     with st.spinner('Waiting for assistant...'):
-                        messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
-                        st.session_state.messages.extend([
-                            {"role": "user", "content": "Image search results: " + logs},
-                            {"role": "assistant", "content": messages[0].content[0].text.value}
-                        ])
-                        st.rerun()
+                        try:
+                            messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
+                            st.session_state.messages.extend([
+                                {"role": "user", "content": "Image search results: " + logs},
+                                {"role": "assistant", "content": messages[0].content[0].text.value}
+                            ])
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Failed to fetch assistant's response: {e}")
                 except Exception as e:
                     st.error(f"Error processing image: {e}")
 
