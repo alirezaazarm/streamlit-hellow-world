@@ -6,7 +6,6 @@ from openai import OpenAI
 import json
 from datetime import datetime
 
-
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # Initialize session state
@@ -19,6 +18,8 @@ def init_session_state():
         st.session_state.messages = []
     if "page" not in st.session_state:
         st.session_state.page = "login"
+    if "orders" not in st.session_state:
+        st.session_state.orders = []
 
 def load_user_threads():
     thread_file = "./drive/user_threads.json"
@@ -51,6 +52,105 @@ def login_page():
         else:
             st.error("Please enter a username")
 
+def main_page():
+    st.title(f"Welcome {st.session_state.username}")
+
+    # Download required files
+    st.text("Checking for required files...")
+    try:
+        drive_main()
+        st.success("All required files are ready.")
+    except Exception as e:
+        st.error(f"Error in downloading files: {e}")
+        st.stop()
+
+    # Load orders from JSON file
+    orders_file = "./drive/orders.json"
+    if os.path.exists(orders_file):
+        with open(orders_file, 'r') as f:
+            st.session_state.orders = json.load(f)
+    else:
+        st.session_state.orders = []
+
+    # Display orders
+    st.subheader("Submitted Orders")
+    if st.session_state.orders:
+        st.table(st.session_state.orders)
+    else:
+        st.write("No orders submitted yet.")
+
+    # Image upload and processing
+    st.subheader("Image Search")
+    if st.button("Share Image"):
+        uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"], key="image_uploader")
+        
+        if uploaded_file:
+            try:
+                # Save uploaded file
+                with open("uploaded_image.jpg", "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                st.success("Image uploaded successfully.")
+
+                # Process the image
+                with st.spinner("Processing the uploaded image..."):
+                    logs = process_image("uploaded_image.jpg", top_k=5)
+                    st.text("Search Results:")
+                    st.text(logs)
+                    
+                    # Send results to the assistant
+                    client.beta.threads.messages.create(
+                        thread_id=st.session_state.thread_id,
+                        role="user",
+                        content=f"Image search results:\n{logs}"
+                    )
+                    
+                    # Fetch assistant's response
+                    messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
+                    st.session_state.messages.extend([
+                        {"role": "user", "content": "Image search results:\n" + logs},
+                        {"role": "assistant", "content": messages[0].content[0].text.value}
+                    ])
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Error processing image: {str(e)}")
+                st.error("Please make sure all required files are in the correct location")
+
+    # Chat with AI Assistant
+    st.subheader("Chat with AI Assistant")
+    
+    # Display chat history
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+    
+    if "is_request_active" not in st.session_state:
+        st.session_state.is_request_active = False
+    # Chat input
+    if prompt := st.chat_input("Send a message"):
+        if not st.session_state.is_request_active:
+            st.session_state.is_request_active = True
+            try:
+                client.beta.threads.messages.create(
+                    thread_id=st.session_state.thread_id,
+                    role="user",
+                    content=prompt
+                )
+                st.success("Message sent successfully!")
+            except Exception as e:
+                st.error(f"Error: {e}")
+            finally:
+                st.session_state.is_request_active = False
+        else:
+            st.warning("A message is currently being processed. Please wait.")
+        messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
+        
+        st.session_state.messages.extend([
+            {"role": "user", "content": prompt},
+            {"role": "assistant", "content": messages[0].content[0].text.value}
+        ])
+        
+        st.rerun()
+
 def run_assistant(thread_id, assistant_id):
     run = client.beta.threads.runs.create(
         thread_id=thread_id,
@@ -67,81 +167,6 @@ def run_assistant(thread_id, assistant_id):
     
     messages = client.beta.threads.messages.list(thread_id=thread_id)
     return messages.data
-
-def main_page():
-    st.title(f"Welcome {st.session_state.username}")
-
-    # Download required files
-    st.text("Checking for required files...")
-    try:
-        drive_main()
-        st.success("All required files are ready.")
-    except Exception as e:
-        st.error(f"Error in downloading files: {e}")
-        st.stop()
-
-    # Initialize the app
-    if 'initialized' not in st.session_state:
-        st.session_state.initialized = True
-
-    # Create two columns
-    col1, col2 = st.columns([1, 1])
-
-    with col1:
-        st.header("Image Search")
-        uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"])
-
-        if uploaded_file:
-            try:
-                # Save uploaded file
-                with open("uploaded_image.jpg", "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-                st.success("Image uploaded successfully.")
-
-                # Process the image
-                with st.spinner("Processing the uploaded image..."):
-                    logs = process_image("uploaded_image.jpg", top_k=5)
-                    st.text("Search Results:")
-                    st.text(logs)
-            except Exception as e:
-                st.error(f"Error processing image: {str(e)}")
-                st.error("Please make sure all required files are in the correct location")
-
-    with col2:
-        st.header("Chat with AI Assistant")
-        
-        # Display chat history
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.write(message["content"])
-        
-        if "is_request_active" not in st.session_state:
-            st.session_state.is_request_active = False
-        # Chat input
-        if prompt := st.chat_input("Send a message"):
-            if not st.session_state.is_request_active:
-                st.session_state.is_request_active = True
-                try:
-                    client.beta.threads.messages.create(
-                        thread_id=st.session_state.thread_id,
-                        role="user",
-                        content=prompt
-                    )
-                    st.success("Message sent successfully!")
-                except Exception  as e:
-                    st.error(f"Error: {e}")
-                finally:
-                    st.session_state.is_request_active = False
-            else:
-                st.warning("A message is currently being processed. Please wait.")
-            messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
-            
-            st.session_state.messages.extend([
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": messages[0].content[0].text.value}
-            ])
-            
-            st.rerun()
 
 def main():
     init_session_state()
