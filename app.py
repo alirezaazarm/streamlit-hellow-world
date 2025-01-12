@@ -5,6 +5,7 @@ import os
 from openai import OpenAI
 import json
 from datetime import datetime
+from openai.error import BadRequestError
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
@@ -114,14 +115,25 @@ def main_page():
             with st.chat_message(message["role"]):
                 st.write(message["content"])
         
+        if "is_request_active" not in st.session_state:
+            st.session_state.is_request_active = False
         # Chat input
         if prompt := st.chat_input("Send a message"):
-            client.beta.threads.messages.create(
-                thread_id=st.session_state.thread_id,
-                role="user",
-                content=prompt
-            )
-            
+            if not st.session_state.is_request_active:
+                st.session_state.is_request_active = True
+                try:
+                    client.beta.threads.messages.create(
+                        thread_id=st.session_state.thread_id,
+                        role="user",
+                        content=prompt
+                    )
+                    st.success("Message sent successfully!")
+                except BadRequestError as e:
+                    st.error(f"Error: {e}")
+                finally:
+                    st.session_state.is_request_active = False
+            else:
+                st.warning("A message is currently being processed. Please wait.")
             messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
             
             st.session_state.messages.extend([
