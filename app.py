@@ -87,11 +87,12 @@ def main_page():
     with st.expander("Upload and Search Image"):
         if st.button("Share Image"):
             uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"], key="image_uploader")
-            if uploaded_file:
+            if uploaded_file is not None:
                 try:
                     # Save uploaded file
                     with open("uploaded_image.jpg", "wb") as f:
                         f.write(uploaded_file.getbuffer())
+                    st.write("Image saved to uploaded_image.jpg")
                     st.success("Image uploaded successfully.")
 
                     # Process the image
