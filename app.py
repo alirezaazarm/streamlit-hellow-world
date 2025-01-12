@@ -96,27 +96,42 @@ def main_page():
                     logs = process_image(image, top_k=5)
                     st.text("Search Results:")
                     st.text(logs)
-                
+
                 # Send results to the assistant
-                with st.spinner('Sending results to assistant...'):
-                    client.beta.threads.messages.create(
-                        thread_id=st.session_state.thread_id,
-                        role="user",
-                        content=f"Image search results: {logs}"
-                    )
-                    st.success("Results sent to assistant.")
+                if not st.session_state.is_request_active:
+                    st.session_state.is_request_active = True
+                    try:
+                        # Send results to the assistant
+                        with st.spinner('Sending results to assistant...'):
+                            client.beta.threads.messages.create(
+                                thread_id=st.session_state.thread_id,
+                                role="user",
+                                content=f"Image search results: {logs}"
+                            )
+                            st.success("Results sent to assistant.")
                 
-                # Fetch assistant's response
-                with st.spinner('Waiting for assistant...'):
-                    messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
-                    st.session_state.messages.extend([
-                        {"role": "user", "content": "Image search results: " + logs},
-                        {"role": "assistant", "content": messages[0].content[0].text.value}
-                    ])
-                    st.rerun()
+                        # Fetch assistant's response
+                        with st.spinner('Waiting for assistant...'):
+                            messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
+                            if messages and len(messages) > 0:
+                                assistant_response = messages[0].content[0].text.value
+                                st.session_state.messages.extend([
+                                    {"role": "user", "content": "Similarity search results by local model on uploaded image: " + logs},
+                                    {"role": "assistant", "content": assistant_response}
+                                ])
+                            else:
+                                st.warning("No response received from the assistant.")
+
+                    
+                    except Exception as e:
+                        st.error(f"Failed to send message or fetch response: {e}")
+                    finally:
+                        st.session_state.is_request_active = False
+                else:
+                    st.warning("A message is currently being processed. Please wait.")
             except Exception as e:
                 st.error(f"Error processing image: {e}")
-
+                
     # Chat with AI Assistant
     st.header("Chat with AI Assistant")
     
@@ -161,14 +176,17 @@ def run_assistant(thread_id, assistant_id):
     )
     
     while run.status != "completed":
+        time.sleep(2)
         run = client.beta.threads.runs.retrieve(
             thread_id=thread_id,
             run_id=run.id
         )
+        print(f"Run status: {run.status}")
         if run.status == "failed":
             return "Sorry, something went wrong. Please try again."
     
     messages = client.beta.threads.messages.list(thread_id=thread_id)
+    print(messages) 
     return messages.data
 
 def main():
