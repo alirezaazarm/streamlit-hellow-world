@@ -50,6 +50,7 @@ def search_by_image(image_path, model, processor, device, image_features, image_
         return results
 
 def process_image(image_path, top_k=5):
+    print("Processing image:", image_path)
     try:
         # Load precomputed data
         image_features, image_paths, image_index = load_precomputed_data()
