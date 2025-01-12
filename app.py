@@ -4,7 +4,7 @@ from drive import main as drive_main
 import os
 from openai import OpenAI
 import json
-from datetime import datetime
+from PIL import Image
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
@@ -85,54 +85,37 @@ def main_page():
     # Image upload and processing
     st.header("Image Search")
     with st.expander("Upload and Search Image"):
-        if st.button("Share Image"):
-            uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"], key="image_uploader")
-            if uploaded_file is not None:
-                try:
-                    # Save uploaded file
-                    with open("uploaded_image.jpg", "wb") as f:
-                        f.write(uploaded_file.getbuffer())
-                    st.write("Image saved to uploaded_image.jpg")
-                    st.success("Image uploaded successfully.")
-                except Exception as e:
-                    st.error(f"Error processing image: {e}")
+        uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"], key="image_uploader")
+        if uploaded_file:
+            try:
+                image = Image.open(uploaded_file).convert('RGB')
+                st.image(image, caption='Uploaded Image.', use_column_width=True)
                 
-                try:
-                    # Process the image
-                    with st.spinner('Processing image...'):
-                        logs, error = process_image("uploaded_image.jpg", top_k=5)
-                        if error:
-                            st.error(f"Error processing image: {error}")
-                        else:
-                            st.text("Search Results:")
-                            st.text(logs)
-                except Exception as e:
-                    st.error(f"Error processing image: {e}")
-                    
-                    
-                try:
-                     # Send results to the assistant
-                    with st.spinner('Sending results to assistant...'):
-                        client.beta.threads.messages.create(
-                                thread_id=st.session_state.thread_id,
-                                role="user",
-                                content=f"Image search results: {logs}"
-                            )
-                        st.success("Results sent to assistant.")
-                except Exception as e:
-                        st.error(f"Failed to send message to assistant: {e}")
-
-                try:
-                    # Fetch assistant's response
-                    with st.spinner('Waiting for assistant...'):
-                        messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
-                        st.session_state.messages.extend([
-                                {"role": "user", "content": "Image search results: " + logs},
-                                {"role": "assistant", "content": messages[0].content[0].text.value}
-                            ])
-                        st.rerun()
-                except Exception as e:
-                        st.error(f"Failed to fetch assistant's response: {e}")
+                # Process the image
+                with st.spinner('Processing image...'):
+                    logs = process_image(image, top_k=5)
+                    st.text("Search Results:")
+                    st.text(logs)
+                
+                # Send results to the assistant
+                with st.spinner('Sending results to assistant...'):
+                    client.beta.threads.messages.create(
+                        thread_id=st.session_state.thread_id,
+                        role="user",
+                        content=f"Image search results: {logs}"
+                    )
+                    st.success("Results sent to assistant.")
+                
+                # Fetch assistant's response
+                with st.spinner('Waiting for assistant...'):
+                    messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
+                    st.session_state.messages.extend([
+                        {"role": "user", "content": "Image search results: " + logs},
+                        {"role": "assistant", "content": messages[0].content[0].text.value}
+                    ])
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Error processing image: {e}")
 
     # Chat with AI Assistant
     st.header("Chat with AI Assistant")
@@ -190,7 +173,7 @@ def run_assistant(thread_id, assistant_id):
 
 def main():
     init_session_state()
-    print("Current working directory:", os.getcwd())
+    
     if st.session_state.page == "login":
         login_page()
     elif st.session_state.page == "main":
