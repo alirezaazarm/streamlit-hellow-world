@@ -97,9 +97,12 @@ def main_page():
                     # Process the image
                     with st.spinner('Processing image...'):
                         try:
-                            logs = process_image("uploaded_image.jpg", top_k=5)
-                            st.text("Search Results:")
-                            st.text(logs)
+                            logs, error = process_image("uploaded_image.jpg", top_k=5)
+                            if error:
+                                st.error(f"Error processing image: {error}")
+                            else:
+                                st.text("Search Results:")
+                                st.text(logs)
                         except Exception as e:
                             st.error(f"Error processing image: {e}")
                     
