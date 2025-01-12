@@ -85,4 +85,4 @@ def process_image(image_path, top_k=5):
         
         return "\n".join(output_logs)
     except Exception as e:
-        raise Exception(f"Detailed error: {str(e)}")
+        return None, str(e)
