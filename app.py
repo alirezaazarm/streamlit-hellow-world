@@ -5,7 +5,8 @@ import os
 from openai import OpenAI
 import json
 from datetime import datetime
-from openai.error import BadRequestError
+from openai.error import OpenAIError
+
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
@@ -128,7 +129,7 @@ def main_page():
                         content=prompt
                     )
                     st.success("Message sent successfully!")
-                except BadRequestError as e:
+                except OpenAIError as e:
                     st.error(f"Error: {e}")
                 finally:
                     st.session_state.is_request_active = False
