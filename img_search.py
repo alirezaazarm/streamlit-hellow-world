@@ -83,6 +83,6 @@ def process_image(image_path, top_k=5):
             
             output_logs.extend([similarity, pid, eng_text, persian_title])
         
-        return "\n".join(output_logs)
+        return "\n".join(output_logs), None
     except Exception as e:
         return None, str(e)
