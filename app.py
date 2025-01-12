@@ -5,6 +5,7 @@ import os
 from openai import OpenAI
 import json
 from PIL import Image
+import time
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
