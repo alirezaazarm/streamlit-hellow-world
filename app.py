@@ -28,6 +28,7 @@ def load_user_threads():
 
 def save_user_threads(user_threads):
     thread_file = "./drive/user_threads.json"
+    os.makedirs(os.path.dirname(thread_file), exist_ok=True)
     with open(thread_file, 'w') as f:
         json.dump(user_threads, f)
 
