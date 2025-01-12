@@ -190,7 +190,7 @@ def run_assistant(thread_id, assistant_id):
 
 def main():
     init_session_state()
-    
+    print("Current working directory:", os.getcwd())
     if st.session_state.page == "login":
         login_page()
     elif st.session_state.page == "main":
