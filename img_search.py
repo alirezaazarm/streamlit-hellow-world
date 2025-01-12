@@ -8,7 +8,10 @@ from PIL import Image
 import os
 
 def load_precomputed_data():
-    """Load the precomputed features and metadata"""
+    pickle_path = 'drive/inference.pkl'
+    if not os.path.exists(pickle_path):
+        raise FileNotFoundError(f"File not found: {pickle_path}")
+    print("Loading precomputed data...")
     with open('drive/inference.pkl', 'rb') as f:
         data_dict = pickle.load(f)
     return data_dict['image_features'], data_dict['image_paths'], data_dict['image_index']
