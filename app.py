@@ -46,7 +46,7 @@ def login_page():
                 save_user_threads(user_threads)
             st.session_state.thread_id = user_threads[username]
             st.session_state.page = "main"
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Please enter a username")
 
@@ -129,7 +129,7 @@ def main_page():
                 {"role": "assistant", "content": messages[0].content[0].text.value}
             ])
             
-            st.experimental_rerun()
+            st.rerun()
 
 def main():
     init_session_state()
