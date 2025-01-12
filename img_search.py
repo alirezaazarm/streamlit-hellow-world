@@ -1,17 +1,12 @@
-# img_search.py
 import pandas as pd
 import torch
 import pickle
 import torch.nn.functional as F
 from transformers import CLIPProcessor, CLIPModel
 from PIL import Image
-import os
 
 def load_precomputed_data():
-    pickle_path = 'drive/inference.pkl'
-    if not os.path.exists(pickle_path):
-        raise FileNotFoundError(f"File not found: {pickle_path}")
-    print("Loading precomputed data...")
+    """Load the precomputed features and metadata"""
     with open('drive/inference.pkl', 'rb') as f:
         data_dict = pickle.load(f)
     return data_dict['image_features'], data_dict['image_paths'], data_dict['image_index']
@@ -25,10 +20,9 @@ def initialize_model():
     model.eval()
     return model, processor, device
 
-def search_by_image(image_path, model, processor, device, image_features, image_paths, image_index, top_k=5):
+def search_by_image(image, model, processor, device, image_features, image_paths, image_index, top_k=5):
     """Search for similar images using CLIP"""
     with torch.no_grad():
-        image = Image.open(image_path).convert('RGB')
         inputs = processor(images=image, return_tensors="pt")
         image_features_query = model.get_image_features(inputs['pixel_values'].to(device))
         image_features_query = F.normalize(image_features_query.cpu(), dim=-1)
@@ -49,8 +43,7 @@ def search_by_image(image_path, model, processor, device, image_features, image_
                     break
         return results
 
-def process_image(image_path, top_k=5):
-    print("Processing image:", image_path)
+def process_image(image, top_k=5):
     try:
         # Load precomputed data
         image_features, image_paths, image_index = load_precomputed_data()
@@ -63,7 +56,7 @@ def process_image(image_path, top_k=5):
         
         # Search for similar images
         results = search_by_image(
-            image_path, 
+            image, 
             model, 
             processor, 
             device, 
@@ -87,6 +80,6 @@ def process_image(image_path, top_k=5):
             
             output_logs.extend([similarity, pid, eng_text, persian_title])
         
-        return "\n".join(output_logs), None
+        return "\n".join(output_logs)
     except Exception as e:
-        return None, str(e)
+        raise Exception(f"Detailed error: {str(e)}")
