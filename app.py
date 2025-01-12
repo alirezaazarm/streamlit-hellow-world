@@ -96,14 +96,23 @@ def main_page():
                     logs = process_image("uploaded_image.jpg", top_k=5)
                     st.text("Search Results:")
                     st.text(logs)
+
+                    # Debug statements
+                    st.write(f"Debug: logs = {logs}")
+                    st.write(f"Debug: thread_id = {st.session_state.thread_id}")
+                    st.write(f"Debug: assistant_id = {st.secrets['ASSISTANT_ID']}")
                     
                     # Send results to the assistant
-                    client.beta.threads.messages.create(
-                        thread_id=st.session_state.thread_id,
-                        role="user",
-                        content=f"Image search results:\n{logs}"
-                    )
-                    
+                    try:
+                        client.beta.threads.messages.create(
+                            thread_id=st.session_state.thread_id,
+                            role="user",
+                            content=f"Image search results:\n{logs}"
+                        )
+                        st.success("Message sent successfully!")
+                    except Exception as e:
+                        st.error(f"Error sending message: {e}")
+                        
                     # Fetch assistant's response
                     messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
                     st.session_state.messages.extend([
