@@ -77,12 +77,12 @@ def login_page():
         else:
             st.error("Invalid username or password")
     
-    st.markdown("Don't have an account? ", end="")
+    st.markdown("Don't have an account? ")
     if st.button("Sign Up"):
         st.session_state.page = "signup"
         st.rerun()
     
-    st.markdown("Forgot password? ", end="")
+    st.markdown("Forgot password? ")
     if st.button("Forgot Password"):
         st.session_state.page = "forgot_password"
         st.rerun()
