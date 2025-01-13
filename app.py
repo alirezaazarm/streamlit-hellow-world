@@ -204,12 +204,14 @@ def main_page():
                                     "role": "assistant",
                                     "content": assistant_response
                                 })
+                                st.session_state.is_request_active = False  # Reset the flag
                             else:
                                 st.warning("No response received from the assistant.")
+                                st.session_state.is_request_active = False  # Reset the flag
                     except Exception as e:
                         st.error(f"Failed to send message or fetch response: {e}")
+                        st.session_state.is_request_active = False  # Reset the flag
                     finally:
-                        st.session_state.is_request_active = False
                         st.session_state.image_uploaded = True  # Mark image as processed
                 else:
                     st.warning("A message is currently being processed. Please wait.")
@@ -249,6 +251,7 @@ def main_page():
                     st.success("Message sent successfully!")
             except Exception as e:
                 st.error(f"Error: {e}")
+                st.session_state.is_request_active = False  # Reset the flag
             finally:
                 # Fetch assistant's response
                 with st.spinner('Waiting for assistant...'):
@@ -263,12 +266,10 @@ def main_page():
                         # Render assistant's response in chat UI
                         with st.chat_message("assistant"):
                             st.write(assistant_response)
-                        st.session_state.is_request_active = False  # Set to False after response is fetched
-                        st.rerun()  # Refresh the UI
+                        st.session_state.is_request_active = False  # Reset the flag
                     else:
                         st.warning("No response received from the assistant.")
-                        st.session_state.is_request_active = False  # Set to False if no response
-                        st.rerun()  # Refresh the UI
+                        st.session_state.is_request_active = False  # Reset the flag
 
 def run_assistant(thread_id, assistant_id):
     # Check for existing active runs
@@ -277,7 +278,7 @@ def run_assistant(thread_id, assistant_id):
         if run.status in ["requires_action", "processing"]:
             # Wait until the active run is completed
             while run.status not in ["completed", "failed"]:
-                time.sleep(2)
+                time.sleep(1)  # Reduced polling interval
                 run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
     
     # Create a new run
@@ -332,7 +333,7 @@ def run_assistant(thread_id, assistant_id):
             break
         else:
             print(f"Run status: {run.status}")
-            time.sleep(2)
+            time.sleep(1)  # Reduced polling interval
     
     # Fetch messages after the run is completed
     messages = client.beta.threads.messages.list(thread_id=thread_id)
