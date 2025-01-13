@@ -276,7 +276,6 @@ def run_assistant(thread_id, assistant_id):
             run_id=run.id
         )
         if run.status == "requires_action":
-            print("Function Calling...")
             required_actions = run.required_action.submit_tool_outputs.model_dump()
             tool_outputs = []
             
@@ -285,8 +284,7 @@ def run_assistant(thread_id, assistant_id):
                 arguments = json.loads(tool_call['function']['arguments'])
                 
                 if func_name == "add_order_row":
-                    # Ensure all required parameters are present
-                    required_params = ['first_name', 'last_name', 'address', 'phone', 'product', 'price']
+                    required_params = ['first_name', 'last_name', 'address', 'phone', 'product', 'price', 'how_many']
                     missing_params = [param for param in required_params if param not in arguments]
                     
                     if missing_params:
@@ -320,9 +318,7 @@ def run_assistant(thread_id, assistant_id):
             print(f"Run status: {run.status}")
             time.sleep(2)
     
-    # Set is_request_active to False
-    st.session_state.is_request_active = False
-    
+    # Fetch messages after the run is completed
     messages = client.beta.threads.messages.list(thread_id=thread_id)
     return messages.data
 
