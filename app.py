@@ -101,7 +101,6 @@ def signup_page():
             if password == confirm_password:
                 creds[username] = password
                 save_user_credentials(creds)
-                # Create a new thread ID for the user
                 user_threads = load_user_threads()
                 thread = client.beta.threads.create()
                 user_threads[username] = thread.id
@@ -197,10 +196,14 @@ def main_page():
                             messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
                             if messages and len(messages) > 0:
                                 assistant_response = messages[0].content[0].text.value
-                                st.session_state.messages.extend([
-                                    {"role": "user", "content": "Similarity search results by local model on uploaded image: " + logs},
-                                    {"role": "assistant", "content": assistant_response}
-                                ])
+                                st.session_state.messages.append({
+                                    "role": "user",
+                                    "content": "Similarity search results by local model on uploaded image: " + logs
+                                })
+                                st.session_state.messages.append({
+                                    "role": "assistant",
+                                    "content": assistant_response
+                                })
                             else:
                                 st.warning("No response received from the assistant.")
                     except Exception as e:
@@ -229,6 +232,12 @@ def main_page():
         prompt = st.chat_input("Type your message here")
         
         if prompt:
+            # Append user message to chat history
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            # Render user message in chat UI
+            with st.chat_message("user"):
+                st.write(prompt)
+            # Send user message to the assistant
             st.session_state.is_request_active = True
             try:
                 with st.spinner('Sending message...'):
@@ -246,7 +255,14 @@ def main_page():
                     messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
                     if messages and len(messages) > 0:
                         assistant_response = messages[0].content[0].text.value
-                        st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+                        # Append assistant's response to chat history
+                        st.session_state.messages.append({
+                            "role": "assistant",
+                            "content": assistant_response
+                        })
+                        # Render assistant's response in chat UI
+                        with st.chat_message("assistant"):
+                            st.write(assistant_response)
                         st.session_state.is_request_active = False  # Set to False after response is fetched
                         st.rerun()  # Refresh the UI
                     else:
