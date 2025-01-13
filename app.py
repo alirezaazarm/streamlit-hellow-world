@@ -222,13 +222,15 @@ def main_page():
             st.write(message["content"])
     
     # Chat input
-    prompt = st.chat_input("Type your message here")
+    if not st.session_state.is_request_active:
+        prompt = st.chat_input("Type your message here")
+    else:
+        prompt = None  # Disable input when a request is active
 
     if prompt:
         if not st.session_state.is_request_active:
             st.session_state.is_request_active = True
             try:
-                st.session_state.messages.append({"role": "user", "content": prompt})
                 with st.spinner('Sending message...'):
                     client.beta.threads.messages.create(
                         thread_id=st.session_state.thread_id,
@@ -249,8 +251,21 @@ def main_page():
                     st.rerun()
                 else:
                     st.warning("No response received from the assistant.")
+    else:
+        # Inform the user to wait
+        st.info("Please wait for the current request to complete before sending a new message.")
 
 def run_assistant(thread_id, assistant_id):
+    # Check for existing active runs
+    runs = client.beta.threads.runs.list(thread_id=thread_id)
+    for run in runs.data:
+        if run.status in ["requires_action", "processing"]:
+            # Wait until the active run is completed
+            while run.status not in ["completed", "failed"]:
+                time.sleep(2)
+                run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
+    
+    # Create a new run
     run = client.beta.threads.runs.create(
         thread_id=thread_id,
         assistant_id=assistant_id
@@ -271,6 +286,13 @@ def run_assistant(thread_id, assistant_id):
                 arguments = json.loads(tool_call['function']['arguments'])
                 
                 if func_name == "add_order_row":
+                    # Ensure all required parameters are present
+                    required_params = ['first_name', 'last_name', 'address', 'phone', 'product', 'price']
+                    missing_params = [param for param in required_params if param not in arguments]
+                    
+                    if missing_params:
+                        raise KeyError(f"Missing required parameters: {', '.join(missing_params)}")
+                    
                     output_df = add_order_row(
                         file_path="./drive/orders.json",
                         first_name=arguments['first_name'],
@@ -278,8 +300,7 @@ def run_assistant(thread_id, assistant_id):
                         address=arguments['address'],
                         phone=arguments['phone'],
                         product=arguments['product'],
-                        price=arguments['price'],
-                        how_many=arguments['how_many']
+                        price=arguments['price']
                     )
                     tool_outputs.append({
                         "tool_call_id": tool_call['id'],
@@ -298,6 +319,9 @@ def run_assistant(thread_id, assistant_id):
         else:
             print(f"Run status: {run.status}")
             time.sleep(2)
+    
+    # Set is_request_active to False
+    st.session_state.is_request_active = False
     
     messages = client.beta.threads.messages.list(thread_id=thread_id)
     return messages.data
