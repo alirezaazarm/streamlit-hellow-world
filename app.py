@@ -183,6 +183,7 @@ def main_page():
                 if not st.session_state.is_request_active:
                     st.session_state.is_request_active = True
                     try:
+                        wait_for_runs_to_complete(st.session_state.thread_id)
                         with st.spinner('Sending results to assistant...'):
                             client.beta.threads.messages.create(
                                 thread_id=st.session_state.thread_id,
@@ -242,6 +243,7 @@ def main_page():
             # Send user message to the assistant
             st.session_state.is_request_active = True
             try:
+                wait_for_runs_to_complete(st.session_state.thread_id)
                 with st.spinner('Sending message...'):
                     client.beta.threads.messages.create(
                         thread_id=st.session_state.thread_id,
@@ -271,6 +273,20 @@ def main_page():
                         st.warning("No response received from the assistant.")
                         st.session_state.is_request_active = False  # Reset the flag
 
+def wait_for_runs_to_complete(thread_id):
+    runs = client.beta.threads.runs.list(thread_id=thread_id)
+    for run in runs.data:
+        if run.status in ["requires_action", "processing"]:
+            # Wait until the active run is completed with exponential backoff
+            max_attempts = 5
+            for attempt in range(max_attempts):
+                time.sleep(2**attempt)  # Exponential backoff
+                run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
+                if run.status in ["completed", "failed"]:
+                    break
+            else:
+                print(f"Run {run.id} still active after {max_attempts} attempts.")
+
 def run_assistant(thread_id, assistant_id):
     # Check for existing active runs
     runs = client.beta.threads.runs.list(thread_id=thread_id)
@@ -278,7 +294,7 @@ def run_assistant(thread_id, assistant_id):
         if run.status in ["requires_action", "processing"]:
             # Wait until the active run is completed
             while run.status not in ["completed", "failed"]:
-                time.sleep(1)  # Reduced polling interval
+                time.sleep(2)  # Polling interval
                 run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
     
     # Create a new run
@@ -333,7 +349,7 @@ def run_assistant(thread_id, assistant_id):
             break
         else:
             print(f"Run status: {run.status}")
-            time.sleep(1)  # Reduced polling interval
+            time.sleep(2)  # Polling interval
     
     # Fetch messages after the run is completed
     messages = client.beta.threads.messages.list(thread_id=thread_id)
