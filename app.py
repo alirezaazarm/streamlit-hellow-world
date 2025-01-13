@@ -277,7 +277,8 @@ def run_assistant(thread_id, assistant_id):
                         address=arguments['address'],
                         phone=arguments['phone'],
                         product=arguments['product'],
-                        price=arguments['price']
+                        price=arguments['price'],
+                        how_many=arguments['how_many']
                     )
                     tool_outputs.append({
                         "tool_call_id": tool_call['id'],
