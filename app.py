@@ -77,12 +77,12 @@ def login_page():
         else:
             st.error("Invalid username or password")
     
-    st.write("Don't have an account? ", end="")
+    st.markdown("Don't have an account? ", end="")
     if st.button("Sign Up"):
         st.session_state.page = "signup"
         st.rerun()
     
-    st.write("Forgot password? ", end="")
+    st.markdown("Forgot password? ", end="")
     if st.button("Forgot Password"):
         st.session_state.page = "forgot_password"
         st.rerun()
@@ -172,7 +172,7 @@ def main_page():
         if st.session_state.current_image and not st.session_state.image_uploaded:
             try:
                 image = Image.open(st.session_state.current_image).convert('RGB')
-                st.image(image, caption='Uploaded Image.', use_column_width=True)
+                st.image(image, caption='Uploaded Image.', use_container_width=True)
                 
                 # Process the image
                 with st.spinner('Processing image...'):
@@ -228,6 +228,7 @@ def main_page():
         if not st.session_state.is_request_active:
             st.session_state.is_request_active = True
             try:
+                st.session_state.messages.append({"role": "user", "content": prompt})
                 with st.spinner('Sending message...'):
                     client.beta.threads.messages.create(
                         thread_id=st.session_state.thread_id,
