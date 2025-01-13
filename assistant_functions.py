@@ -25,7 +25,7 @@ def add_order_row(file_path, first_name, last_name, address, phone, product, pri
         'address': str(address),
         'phone': str(phone),
         'product': str(product),
-        'price': float(price),
+        'price': str(price),
         'date': date_time_str,
         'how_many': int(how_many)
     }
