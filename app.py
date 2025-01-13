@@ -7,6 +7,7 @@ import json
 from PIL import Image
 import time
 from assistant_functions import add_order_row
+from datetime import datetime
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
@@ -57,8 +58,9 @@ def save_user_threads(user_threads):
 
 def login_page():
     st.title("Image Search with CLIP & AI Chat")
-    username = st.text_input("Enter your username:")
-    password = st.text_input("Enter your password:", type="password")
+    st.subheader("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
     
     if st.button("Login"):
         creds = load_user_credentials()
@@ -74,6 +76,61 @@ def login_page():
             st.rerun()
         else:
             st.error("Invalid username or password")
+    
+    st.write("Don't have an account? ", end="")
+    if st.button("Sign Up"):
+        st.session_state.page = "signup"
+        st.rerun()
+    
+    st.write("Forgot password? ", end="")
+    if st.button("Forgot Password"):
+        st.session_state.page = "forgot_password"
+        st.rerun()
+
+def signup_page():
+    st.title("Sign Up")
+    username = st.text_input("Enter your username:")
+    password = st.text_input("Enter your password:", type="password")
+    confirm_password = st.text_input("Confirm your password:", type="password")
+    
+    if st.button("Sign Up"):
+        creds = load_user_credentials()
+        if username in creds:
+            st.error("Username already exists. Please choose a different username.")
+        else:
+            if password == confirm_password:
+                creds[username] = password
+                save_user_credentials(creds)
+                # Create a new thread ID for the user
+                user_threads = load_user_threads()
+                thread = client.beta.threads.create()
+                user_threads[username] = thread.id
+                save_user_threads(user_threads)
+                st.success("Account created successfully. Please log in.")
+                st.session_state.page = "login"
+                st.rerun()
+            else:
+                st.error("Passwords do not match. Please try again.")
+
+def forgot_password_page():
+    st.title("Forgot Password")
+    username = st.text_input("Enter your username:")
+    new_password = st.text_input("Enter your new password:", type="password")
+    confirm_new_password = st.text_input("Confirm your new password:", type="password")
+    
+    if st.button("Reset Password"):
+        creds = load_user_credentials()
+        if username in creds:
+            if new_password == confirm_new_password:
+                creds[username] = new_password
+                save_user_credentials(creds)
+                st.success("Password reset successfully. Please log in with your new password.")
+                st.session_state.page = "login"
+                st.rerun()
+            else:
+                st.error("New passwords do not match. Please try again.")
+        else:
+            st.error("Username not found. Please try again.")
 
 def main_page():
     st.title(f"Welcome {st.session_state.username}")
@@ -187,22 +244,7 @@ def main_page():
                 messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
                 if messages and len(messages) > 0:
                     assistant_response = messages[0].content[0].text.value
-                    if "add_order_row" in assistant_response:
-                        # Extract parameters and call the function
-                        # This is a simplified example; in practice, you'd parse the parameters
-                        # For demonstration, we'll use dummy values
-                        add_order_row(
-                            file_path="./drive/orders.json",
-                            first_name="John",
-                            last_name="Doe",
-                            address="123 Main St",
-                            phone="1234567890",
-                            product="Product X",
-                            price="100"
-                        )
-                        st.session_state.messages.append({"role": "assistant", "content": "Order added successfully."})
-                    else:
-                        st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+                    st.session_state.messages.append({"role": "assistant", "content": assistant_response})
                     st.rerun()
                 else:
                     st.warning("No response received from the assistant.")
@@ -213,14 +255,47 @@ def run_assistant(thread_id, assistant_id):
         assistant_id=assistant_id
     )
     
-    while run.status != "completed":
-        time.sleep(2)
+    while True:
         run = client.beta.threads.runs.retrieve(
             thread_id=thread_id,
             run_id=run.id
         )
-        if run.status == "failed":
-            return []
+        if run.status == "requires_action":
+            print("Function Calling...")
+            required_actions = run.required_action.submit_tool_outputs.model_dump()
+            tool_outputs = []
+            
+            for tool_call in required_actions["tool_calls"]:
+                func_name = tool_call['function']['name']
+                arguments = json.loads(tool_call['function']['arguments'])
+                
+                if func_name == "add_order_row":
+                    output_df = add_order_row(
+                        file_path="./drive/orders.json",
+                        first_name=arguments['first_name'],
+                        last_name=arguments['last_name'],
+                        address=arguments['address'],
+                        phone=arguments['phone'],
+                        product=arguments['product'],
+                        price=arguments['price']
+                    )
+                    tool_outputs.append({
+                        "tool_call_id": tool_call['id'],
+                        "output": output_df.to_json(orient='records', force_ascii=False)
+                    })
+                else:
+                    raise ValueError(f"Unknown function: {func_name}")
+            
+            client.beta.threads.runs.submit_tool_outputs(
+                thread_id=thread_id,
+                run_id=run.id,
+                tool_outputs=tool_outputs
+            )
+        elif run.status == "completed":
+            break
+        else:
+            print(f"Run status: {run.status}")
+            time.sleep(2)
     
     messages = client.beta.threads.messages.list(thread_id=thread_id)
     return messages.data
@@ -230,6 +305,10 @@ def main():
     
     if st.session_state.page == "login":
         login_page()
+    elif st.session_state.page == "signup":
+        signup_page()
+    elif st.session_state.page == "forgot_password":
+        forgot_password_page()
     elif st.session_state.page == "main":
         main_page()
 
