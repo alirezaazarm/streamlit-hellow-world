@@ -1,22 +1,5 @@
 import pandas as pd
-
-params = {
-            "first_name": { "type": "string", "description":"نام سفارش دهنده" } ,
-            "last_name" : { "type": "string", "description":"نام خانوادگی سفارش دهنده" } ,
-            "address" : { "type": "string", "description":"آدرس (نشانی) سفارش دهنده" } ,
-            "phone": { "type": "string", "description":"شماره تلفن سفارش دهنده" } ,
-            "product" : { "type": "string", "description":"عنوان محصول خریداری شده" } ,
-            "price" : { "type": "string", "description":"قیمت محصول خریداری شده" } ,
-            "date" : { "type": "string", "description":"تاریخ و ساعت ثبت سفارش" }
-          }
-
-tools_list = [ {"type": "file_search"},
- {"type": "function",
- "function": {      "name": "add_order_row",
-                    "description": "ثبت سفارش جدید در جدول سفارشات",
-                    "parameters": {  "type": "object", "properties": params,
-                    "required":[ 'first_name', 'last_name', 'address', 'phone'] }
-  }}         ]
+from datetime import datetime
 
 def add_order_row(file_path, first_name, last_name, address, phone, product, price):
   try:
