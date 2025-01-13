@@ -9,7 +9,7 @@ def add_order_row(file_path, first_name, last_name, address, phone, product, pri
             'address': str,
             'phone': str,  # Ensure phone is read as string
             'product': str,
-            'price': float,
+            'price': str,
             'date': str,
             'how_many': int
         })
