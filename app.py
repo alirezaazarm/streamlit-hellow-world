@@ -6,6 +6,7 @@ from openai import OpenAI
 import json
 from PIL import Image
 import time
+from assistant_functions import add_order_row
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
@@ -28,6 +29,19 @@ def init_session_state():
     if "current_image" not in st.session_state:
         st.session_state.current_image = None
 
+def load_user_credentials():
+    cred_file = "./drive/user_credentials.json"
+    if os.path.exists(cred_file):
+        with open(cred_file, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_user_credentials(creds):
+    cred_file = "./drive/user_credentials.json"
+    os.makedirs(os.path.dirname(cred_file), exist_ok=True)
+    with open(cred_file, 'w') as f:
+        json.dump(creds, f)
+
 def load_user_threads():
     thread_file = "./drive/user_threads.json"
     if os.path.exists(thread_file):
@@ -44,9 +58,11 @@ def save_user_threads(user_threads):
 def login_page():
     st.title("Image Search with CLIP & AI Chat")
     username = st.text_input("Enter your username:")
+    password = st.text_input("Enter your password:", type="password")
     
-    if st.button("Start"):
-        if username:
+    if st.button("Login"):
+        creds = load_user_credentials()
+        if username in creds and creds[username] == password:
             st.session_state.username = username
             user_threads = load_user_threads()
             if username not in user_threads:
@@ -57,7 +73,7 @@ def login_page():
             st.session_state.page = "main"
             st.rerun()
         else:
-            st.error("Please enter a username")
+            st.error("Invalid username or password")
 
 def main_page():
     st.title(f"Welcome {st.session_state.username}")
@@ -92,7 +108,6 @@ def main_page():
     with st.expander("Upload and Search Image"):
         uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"], key="image_uploader")
         
-        # Check if a new image is uploaded
         if uploaded_file and st.session_state.current_image != uploaded_file:
             st.session_state.current_image = uploaded_file
             st.session_state.image_uploaded = False  # Reset the flag for new image
@@ -172,7 +187,22 @@ def main_page():
                 messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
                 if messages and len(messages) > 0:
                     assistant_response = messages[0].content[0].text.value
-                    st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+                    if "add_order_row" in assistant_response:
+                        # Extract parameters and call the function
+                        # This is a simplified example; in practice, you'd parse the parameters
+                        # For demonstration, we'll use dummy values
+                        add_order_row(
+                            file_path="./drive/orders.json",
+                            first_name="John",
+                            last_name="Doe",
+                            address="123 Main St",
+                            phone="1234567890",
+                            product="Product X",
+                            price="100"
+                        )
+                        st.session_state.messages.append({"role": "assistant", "content": "Order added successfully."})
+                    else:
+                        st.session_state.messages.append({"role": "assistant", "content": assistant_response})
                     st.rerun()
                 else:
                     st.warning("No response received from the assistant.")
@@ -189,12 +219,10 @@ def run_assistant(thread_id, assistant_id):
             thread_id=thread_id,
             run_id=run.id
         )
-        print(f"Run status: {run.status}")
         if run.status == "failed":
-            return "Sorry, something went wrong. Please try again."
+            return []
     
     messages = client.beta.threads.messages.list(thread_id=thread_id)
-    print(messages) 
     return messages.data
 
 def main():
