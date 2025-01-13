@@ -23,6 +23,10 @@ def init_session_state():
         st.session_state.orders = []
     if "is_request_active" not in st.session_state:
         st.session_state.is_request_active = False
+    if "image_uploaded" not in st.session_state:
+        st.session_state.image_uploaded = False
+    if "current_image" not in st.session_state:
+        st.session_state.current_image = None
 
 def load_user_threads():
     thread_file = "./drive/user_threads.json"
@@ -87,9 +91,15 @@ def main_page():
     st.header("Image Search")
     with st.expander("Upload and Search Image"):
         uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"], key="image_uploader")
-        if uploaded_file:
+        
+        # Check if a new image is uploaded
+        if uploaded_file and st.session_state.current_image != uploaded_file:
+            st.session_state.current_image = uploaded_file
+            st.session_state.image_uploaded = False  # Reset the flag for new image
+        
+        if st.session_state.current_image and not st.session_state.image_uploaded:
             try:
-                image = Image.open(uploaded_file).convert('RGB')
+                image = Image.open(st.session_state.current_image).convert('RGB')
                 st.image(image, caption='Uploaded Image.', use_column_width=True)
                 
                 # Process the image
@@ -98,11 +108,10 @@ def main_page():
                     st.text("Search Results:")
                     st.text(logs)
 
-                # Send results to the assistant
+                # Send results to the assistant only once
                 if not st.session_state.is_request_active:
                     st.session_state.is_request_active = True
                     try:
-                        # Send results to the assistant
                         with st.spinner('Sending results to assistant...'):
                             client.beta.threads.messages.create(
                                 thread_id=st.session_state.thread_id,
@@ -110,7 +119,7 @@ def main_page():
                                 content=f"Image search results: {logs}"
                             )
                             st.success("Results sent to assistant.")
-                
+                        
                         # Fetch assistant's response
                         with st.spinner('Waiting for assistant...'):
                             messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
@@ -122,12 +131,11 @@ def main_page():
                                 ])
                             else:
                                 st.warning("No response received from the assistant.")
-
-                    
                     except Exception as e:
                         st.error(f"Failed to send message or fetch response: {e}")
                     finally:
                         st.session_state.is_request_active = False
+                        st.session_state.image_uploaded = True  # Mark image as processed
                 else:
                     st.warning("A message is currently being processed. Please wait.")
             except Exception as e:
@@ -162,13 +170,12 @@ def main_page():
             # Fetch assistant's response
             with st.spinner('Waiting for assistant...'):
                 messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
-                st.session_state.messages.extend([
-                    {"role": "user", "content": prompt},
-                    {"role": "assistant", "content": messages[0].content[0].text.value}
-                ])
-                st.rerun()
-        else:
-            st.warning("A message is currently being processed. Please wait.")
+                if messages and len(messages) > 0:
+                    assistant_response = messages[0].content[0].text.value
+                    st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+                    st.rerun()
+                else:
+                    st.warning("No response received from the assistant.")
 
 def run_assistant(thread_id, assistant_id):
     run = client.beta.threads.runs.create(
