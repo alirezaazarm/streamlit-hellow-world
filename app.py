@@ -221,14 +221,14 @@ def main_page():
         with st.chat_message(message["role"]):
             st.write(message["content"])
     
-    # Chat input
-    if not st.session_state.is_request_active:
-        prompt = st.chat_input("Type your message here")
+    # Check if a request is active
+    if st.session_state.is_request_active:
+        st.info("Please wait for the current request to complete before sending a new message.")
     else:
-        prompt = None  # Disable input when a request is active
-
-    if prompt:
-        if not st.session_state.is_request_active:
+        # Chat input
+        prompt = st.chat_input("Type your message here")
+        
+        if prompt:
             st.session_state.is_request_active = True
             try:
                 with st.spinner('Sending message...'):
@@ -241,19 +241,18 @@ def main_page():
             except Exception as e:
                 st.error(f"Error: {e}")
             finally:
-                st.session_state.is_request_active = False
-            # Fetch assistant's response
-            with st.spinner('Waiting for assistant...'):
-                messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
-                if messages and len(messages) > 0:
-                    assistant_response = messages[0].content[0].text.value
-                    st.session_state.messages.append({"role": "assistant", "content": assistant_response})
-                    st.rerun()
-                else:
-                    st.warning("No response received from the assistant.")
-    else:
-        # Inform the user to wait
-        st.info("Please wait for the current request to complete before sending a new message.")
+                # Fetch assistant's response
+                with st.spinner('Waiting for assistant...'):
+                    messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
+                    if messages and len(messages) > 0:
+                        assistant_response = messages[0].content[0].text.value
+                        st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+                        st.session_state.is_request_active = False  # Set to False after response is fetched
+                        st.rerun()  # Refresh the UI
+                    else:
+                        st.warning("No response received from the assistant.")
+                        st.session_state.is_request_active = False  # Set to False if no response
+                        st.rerun()  # Refresh the UI
 
 def run_assistant(thread_id, assistant_id):
     # Check for existing active runs
