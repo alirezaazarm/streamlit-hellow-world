@@ -1,3 +1,6 @@
+from init import client
+import time
+
 def wait_for_runs_to_complete(thread_id):
     runs = client.beta.threads.runs.list(thread_id=thread_id)
     for run in runs.data:
