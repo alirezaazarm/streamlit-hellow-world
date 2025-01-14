@@ -8,11 +8,13 @@ from PIL import Image
 import time
 from assistant_functions import add_order_row
 from datetime import datetime
+import uuid
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # Initialize session state
 def init_session_state():
+    os.makedirs("./drive", exist_ok=True)  # Ensure ./drive/ exists
     if "current_thread_id" not in st.session_state:
         st.session_state.current_thread_id = None
     if "current_thread_name" not in st.session_state:
@@ -31,12 +33,13 @@ def load_threads():
         return {}
 
 def save_threads(threads):
+    os.makedirs("./drive", exist_ok=True)
     thread_file = "./drive/threads.json"
-    os.makedirs(os.path.dirname(thread_file), exist_ok=True)
     with open(thread_file, 'w') as f:
         json.dump(threads, f)
 
 def load_messages(thread_id):
+    os.makedirs("./drive", exist_ok=True)
     messages_file = f"./drive/messages_{thread_id}.json"
     if os.path.exists(messages_file):
         with open(messages_file, 'r') as f:
@@ -45,8 +48,8 @@ def load_messages(thread_id):
         return []
 
 def save_messages(thread_id, messages):
+    os.makedirs("./drive", exist_ok=True)
     messages_file = f"./drive/messages_{thread_id}.json"
-    os.makedirs(os.path.dirname(messages_file), exist_ok=True)
     with open(messages_file, 'w') as f:
         json.dump(messages, f)
 
@@ -56,7 +59,6 @@ def create_new_thread():
         if thread_name.strip() == "":
             st.warning("Please enter a valid thread name.")
         else:
-            import uuid
             thread_id = str(uuid.uuid4())
             st.session_state.threads[thread_name] = thread_id
             save_threads(st.session_state.threads)
