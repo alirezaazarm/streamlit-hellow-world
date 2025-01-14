@@ -1,13 +1,6 @@
-import streamlit as st
-from img_search import process_image
-from drive import main as drive_main
-import os
-from openai import OpenAI
-import json
-from PIL import Image
-import time
-from assistant_functions import add_order_row
-from datetime import datetime
+from init import init_session_state, client
+from threads_handling import sidebar_thread_management
+from interface import main_chat_interface
 
 def main():
     init_session_state()
