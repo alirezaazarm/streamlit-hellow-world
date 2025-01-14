@@ -13,265 +13,211 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # Initialize session state
 def init_session_state():
-    if "username" not in st.session_state:
-        st.session_state.username = None
-    if "thread_id" not in st.session_state:
-        st.session_state.thread_id = None
+    if "current_thread_id" not in st.session_state:
+        st.session_state.current_thread_id = None
+    if "current_thread_name" not in st.session_state:
+        st.session_state.current_thread_name = ""
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    if "page" not in st.session_state:
-        st.session_state.page = "login"
-    if "orders" not in st.session_state:
-        st.session_state.orders = []
     if "is_request_active" not in st.session_state:
         st.session_state.is_request_active = False
     if "image_uploaded" not in st.session_state:
         st.session_state.image_uploaded = False
     if "current_image" not in st.session_state:
         st.session_state.current_image = None
+    if "threads" not in st.session_state:
+        st.session_state.threads = load_threads()
 
-def load_user_credentials():
-    cred_file = "./drive/user_credentials.json"
-    if os.path.exists(cred_file):
-        with open(cred_file, 'r') as f:
-            return json.load(f)
-    return {}
-
-def save_user_credentials(creds):
-    cred_file = "./drive/user_credentials.json"
-    os.makedirs(os.path.dirname(cred_file), exist_ok=True)
-    with open(cred_file, 'w') as f:
-        json.dump(creds, f)
-
-def load_user_threads():
-    thread_file = "./drive/user_threads.json"
+def load_threads():
+    thread_file = "./drive/threads.json"
     if os.path.exists(thread_file):
         with open(thread_file, 'r') as f:
             return json.load(f)
-    return {}
+    else:
+        return {}
 
-def save_user_threads(user_threads):
-    thread_file = "./drive/user_threads.json"
+def save_threads(threads):
+    thread_file = "./drive/threads.json"
     os.makedirs(os.path.dirname(thread_file), exist_ok=True)
     with open(thread_file, 'w') as f:
-        json.dump(user_threads, f)
+        json.dump(threads, f)
 
-def login_page():
-    st.title("Image Search with CLIP & AI Chat")
-    st.subheader("Login")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    
-    if st.button("Login"):
-        creds = load_user_credentials()
-        if username in creds and creds[username] == password:
-            st.session_state.username = username
-            user_threads = load_user_threads()
-            if username not in user_threads:
-                thread = client.beta.threads.create()
-                user_threads[username] = thread.id
-                save_user_threads(user_threads)
-            st.session_state.thread_id = user_threads[username]
-            st.session_state.page = "main"
+def create_new_thread():
+    thread_name = st.text_input("Enter the name for the new thread:")
+    if st.button("Create"):
+        if thread_name.strip() == "":
+            st.warning("Please enter a valid thread name.")
+        else:
+            thread = client.beta.threads.create()
+            st.session_state.threads[thread_name] = thread.id
+            save_threads(st.session_state.threads)
+            st.session_state.current_thread_name = thread_name
+            st.session_state.current_thread_id = thread.id
+            st.session_state.messages = []
+            st.success(f"Thread '{thread_name}' created successfully.")
+            st.session_state.image_uploaded = False
             st.rerun()
-        else:
-            st.error("Invalid username or password")
-    
-    st.markdown("Don't have an account? ")
-    if st.button("Sign Up"):
-        st.session_state.page = "signup"
-        st.rerun()
-    
-    st.markdown("Forgot password? ")
-    if st.button("Forgot Password"):
-        st.session_state.page = "forgot_password"
-        st.rerun()
-
-def signup_page():
-    st.title("Sign Up")
-    username = st.text_input("Enter your username:")
-    password = st.text_input("Enter your password:", type="password")
-    confirm_password = st.text_input("Confirm your password:", type="password")
-    
-    if st.button("Sign Up"):
-        creds = load_user_credentials()
-        if username in creds:
-            st.error("Username already exists. Please choose a different username.")
-        else:
-            if password == confirm_password:
-                creds[username] = password
-                save_user_credentials(creds)
-                user_threads = load_user_threads()
-                thread = client.beta.threads.create()
-                user_threads[username] = thread.id
-                save_user_threads(user_threads)
-                st.success("Account created successfully. Please log in.")
-                st.session_state.page = "login"
-                st.rerun()
-            else:
-                st.error("Passwords do not match. Please try again.")
-
-def forgot_password_page():
-    st.title("Forgot Password")
-    username = st.text_input("Enter your username:")
-    new_password = st.text_input("Enter your new password:", type="password")
-    confirm_new_password = st.text_input("Confirm your new password:", type="password")
-    
-    if st.button("Reset Password"):
-        creds = load_user_credentials()
-        if username in creds:
-            if new_password == confirm_new_password:
-                creds[username] = new_password
-                save_user_credentials(creds)
-                st.success("Password reset successfully. Please log in with your new password.")
-                st.session_state.page = "login"
-                st.rerun()
-            else:
-                st.error("New passwords do not match. Please try again.")
-        else:
-            st.error("Username not found. Please try again.")
 
 def main_page():
-    st.title(f"Welcome {st.session_state.username}")
+    st.title("Image Search with CLIP & AI Chat")
 
-    # Download required files
-    st.header("Downloading Required Files")
-    with st.spinner('Downloading files...'):
-        try:
-            drive_main()
-            st.success("All required files are ready.")
-        except Exception as e:
-            st.error(f"Error in downloading files: {e}")
-            st.stop()
+    # Sidebar for thread selection
+    st.sidebar.title("Threads")
+    threads = load_threads()
+    thread_names = list(threads.keys())
 
-    # Load orders from JSON file
-    orders_file = "./drive/orders.json"
-    if os.path.exists(orders_file):
-        with open(orders_file, 'r') as f:
-            st.session_state.orders = json.load(f)
+    if thread_names:
+        selected_thread = st.sidebar.selectbox("Select a thread", thread_names)
+        st.session_state.current_thread_name = selected_thread
+        st.session_state.current_thread_id = threads[selected_thread]
     else:
-        st.session_state.orders = []
+        st.sidebar.info("No threads available. Create a new one.")
 
-    # Display orders
-    st.header("Submitted Orders")
-    if st.session_state.orders:
-        st.dataframe(st.session_state.orders)
-    else:
-        st.write("No orders submitted yet.")
+    if st.sidebar.button("Create New Thread"):
+        create_new_thread()
 
-    # Image upload and processing
-    st.header("Image Search")
-    with st.expander("Upload and Search Image"):
-        uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"], key="image_uploader")
-        
-        if uploaded_file and st.session_state.current_image != uploaded_file:
-            st.session_state.current_image = uploaded_file
-            st.session_state.image_uploaded = False  # Reset the flag for new image
-        
-        if st.session_state.current_image and not st.session_state.image_uploaded:
+    # Main content
+    if st.session_state.current_thread_id:
+        # Download required files
+        st.header("Downloading Required Files")
+        with st.spinner('Downloading files...'):
             try:
-                image = Image.open(st.session_state.current_image).convert('RGB')
-                st.image(image, caption='Uploaded Image.', use_container_width=True)
-                
-                # Process the image
-                with st.spinner('Processing image...'):
-                    logs = process_image(image, top_k=5)
-                    st.text("Search Results:")
-                    st.text(logs)
+                drive_main()
+                st.success("All required files are ready.")
+            except Exception as e:
+                st.error(f"Error in downloading files: {e}")
+                st.stop()
 
-                # Send results to the assistant only once
-                if not st.session_state.is_request_active:
-                    st.session_state.is_request_active = True
-                    try:
-                        wait_for_runs_to_complete(st.session_state.thread_id)
-                        with st.spinner('Sending results to assistant...'):
-                            client.beta.threads.messages.create(
-                                thread_id=st.session_state.thread_id,
-                                role="user",
-                                content=f"Image search results: {logs}"
-                            )
-                            st.success("Results sent to assistant.")
-                        
-                        # Fetch assistant's response
-                        with st.spinner('Waiting for assistant...'):
-                            messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
-                            if messages and len(messages) > 0:
-                                assistant_response = messages[0].content[0].text.value
-                                st.session_state.messages.append({
-                                    "role": "user",
-                                    "content": "Similarity search results by local model on uploaded image: " + logs
-                                })
-                                st.session_state.messages.append({
-                                    "role": "assistant",
-                                    "content": assistant_response
-                                })
-                                st.session_state.is_request_active = False  # Reset the flag
-                            else:
-                                st.warning("No response received from the assistant.")
-                                st.session_state.is_request_active = False  # Reset the flag
-                    except Exception as e:
-                        st.error(f"Failed to send message or fetch response: {e}")
-                        st.session_state.is_request_active = False  # Reset the flag
-                    finally:
-                        st.session_state.image_uploaded = True  # Mark image as processed
-                else:
-                    st.warning("A message is currently being processed. Please wait.")
-            except Exception as e:
-                st.error(f"Error processing image: {e}")
-                
-    # Chat with AI Assistant
-    st.header("Chat with AI Assistant")
-    
-    # Display chat history
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
-    
-    # Check if a request is active
-    if st.session_state.is_request_active:
-        st.info("Please wait for the current request to complete before sending a new message.")
-    else:
-        # Chat input
-        prompt = st.chat_input("Type your message here")
-        
-        if prompt:
-            # Append user message to chat history
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            # Render user message in chat UI
-            with st.chat_message("user"):
-                st.write(prompt)
-            # Send user message to the assistant
-            st.session_state.is_request_active = True
-            try:
-                wait_for_runs_to_complete(st.session_state.thread_id)
-                with st.spinner('Sending message...'):
-                    client.beta.threads.messages.create(
-                        thread_id=st.session_state.thread_id,
-                        role="user",
-                        content=prompt
-                    )
-                    st.success("Message sent successfully!")
-            except Exception as e:
-                st.error(f"Error: {e}")
-                st.session_state.is_request_active = False  # Reset the flag
-            finally:
-                # Fetch assistant's response
-                with st.spinner('Waiting for assistant...'):
-                    messages = run_assistant(st.session_state.thread_id, st.secrets["ASSISTANT_ID"])
-                    if messages and len(messages) > 0:
-                        assistant_response = messages[0].content[0].text.value
-                        # Append assistant's response to chat history
-                        st.session_state.messages.append({
-                            "role": "assistant",
-                            "content": assistant_response
-                        })
-                        # Render assistant's response in chat UI
-                        with st.chat_message("assistant"):
-                            st.write(assistant_response)
-                        st.session_state.is_request_active = False  # Reset the flag
+        # Load orders from JSON file
+        orders_file = f"./drive/orders_{st.session_state.current_thread_id}.json"
+        if os.path.exists(orders_file):
+            with open(orders_file, 'r') as f:
+                orders = json.load(f)
+        else:
+            orders = []
+
+        # Display orders
+        st.header("Submitted Orders")
+        if orders:
+            st.dataframe(orders)
+        else:
+            st.write("No orders submitted yet.")
+
+        # Image upload and processing
+        st.header("Image Search")
+        with st.expander("Upload and Search Image"):
+            uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"], key="image_uploader")
+            
+            if uploaded_file and st.session_state.current_image != uploaded_file:
+                st.session_state.current_image = uploaded_file
+                st.session_state.image_uploaded = False  # Reset the flag for new image
+            
+            if st.session_state.current_image and not st.session_state.image_uploaded:
+                try:
+                    image = Image.open(st.session_state.current_image).convert('RGB')
+                    st.image(image, caption='Uploaded Image.', use_container_width=True)
+                    
+                    # Process the image
+                    with st.spinner('Processing image...'):
+                        logs = process_image(image, top_k=5)
+                        st.text("Search Results:")
+                        st.text(logs)
+
+                    # Send results to the assistant only once
+                    if not st.session_state.is_request_active:
+                        st.session_state.is_request_active = True
+                        try:
+                            wait_for_runs_to_complete(st.session_state.current_thread_id)
+                            with st.spinner('Sending results to assistant...'):
+                                client.beta.threads.messages.create(
+                                    thread_id=st.session_state.current_thread_id,
+                                    role="user",
+                                    content=f"Image search results: {logs}"
+                                )
+                                st.success("Results sent to assistant.")
+                            
+                            # Fetch assistant's response
+                            with st.spinner('Waiting for assistant...'):
+                                messages = run_assistant(st.session_state.current_thread_id, st.secrets["ASSISTANT_ID"])
+                                if messages and len(messages) > 0:
+                                    assistant_response = messages[0].content[0].text.value
+                                    st.session_state.messages.append({
+                                        "role": "user",
+                                        "content": "Similarity search results by local model on uploaded image: " + logs
+                                    })
+                                    st.session_state.messages.append({
+                                        "role": "assistant",
+                                        "content": assistant_response
+                                    })
+                                    st.session_state.is_request_active = False  # Reset the flag
+                                else:
+                                    st.warning("No response received from the assistant.")
+                                    st.session_state.is_request_active = False  # Reset the flag
+                        except Exception as e:
+                            st.error(f"Failed to send message or fetch response: {e}")
+                            st.session_state.is_request_active = False  # Reset the flag
+                        finally:
+                            st.session_state.image_uploaded = True  # Mark image as processed
                     else:
-                        st.warning("No response received from the assistant.")
-                        st.session_state.is_request_active = False  # Reset the flag
+                        st.warning("A message is currently being processed. Please wait.")
+                except Exception as e:
+                    st.error(f"Error processing image: {e}")
+                    
+        # Chat with AI Assistant
+        st.header("Chat with AI Assistant")
+        
+        # Display chat history
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
+        
+        # Check if a request is active
+        if st.session_state.is_request_active:
+            st.info("Please wait for the current request to complete before sending a new message.")
+        else:
+            # Chat input
+            prompt = st.chat_input("Type your message here")
+            
+            if prompt:
+                # Append user message to chat history
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                # Render user message in chat UI
+                with st.chat_message("user"):
+                    st.write(prompt)
+                # Send user message to the assistant
+                st.session_state.is_request_active = True
+                try:
+                    wait_for_runs_to_complete(st.session_state.current_thread_id)
+                    with st.spinner('Sending message...'):
+                        client.beta.threads.messages.create(
+                            thread_id=st.session_state.current_thread_id,
+                            role="user",
+                            content=prompt
+                        )
+                        st.success("Message sent successfully!")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+                    st.session_state.is_request_active = False  # Reset the flag
+                finally:
+                    # Fetch assistant's response
+                    with st.spinner('Waiting for assistant...'):
+                        messages = run_assistant(st.session_state.current_thread_id, st.secrets["ASSISTANT_ID"])
+                        if messages and len(messages) > 0:
+                            assistant_response = messages[0].content[0].text.value
+                            # Append assistant's response to chat history
+                            st.session_state.messages.append({
+                                "role": "assistant",
+                                "content": assistant_response
+                            })
+                            # Render assistant's response in chat UI
+                            with st.chat_message("assistant"):
+                                st.write(assistant_response)
+                            st.session_state.is_request_active = False  # Reset the flag
+                        else:
+                            st.warning("No response received from the assistant.")
+                            st.session_state.is_request_active = False  # Reset the flag
+    else:
+        st.info("Please select or create a thread to start.")
 
 def wait_for_runs_to_complete(thread_id):
     runs = client.beta.threads.runs.list(thread_id=thread_id)
@@ -324,7 +270,7 @@ def run_assistant(thread_id, assistant_id):
                         raise KeyError(f"Missing required parameters: {', '.join(missing_params)}")
                     
                     output_df = add_order_row(
-                        file_path="./drive/orders.json",
+                        file_path=f"./drive/orders_{thread_id}.json",
                         first_name=arguments['first_name'],
                         last_name=arguments['last_name'],
                         address=arguments['address'],
@@ -357,15 +303,7 @@ def run_assistant(thread_id, assistant_id):
 
 def main():
     init_session_state()
-    
-    if st.session_state.page == "login":
-        login_page()
-    elif st.session_state.page == "signup":
-        signup_page()
-    elif st.session_state.page == "forgot_password":
-        forgot_password_page()
-    elif st.session_state.page == "main":
-        main_page()
+    main_page()
 
 if __name__ == "__main__":
     main()
