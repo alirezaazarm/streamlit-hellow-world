@@ -158,8 +158,6 @@ def sidebar_thread_management():
                 st.session_state.messages = load_chat_history(thread_id)
                 st.rerun()
 
-
-
 def verify_output_against_vector_store(client, vector_store_id, model_response):
     query = model_response
     try:
@@ -276,7 +274,7 @@ def main_chat_interface():
                         
                         verified, matches = verify_output_against_vector_store(
                             client=client,
-                            vector_store_id=st.secrets["VECTOR_STORE_ID"],
+                            vector_store_id=st.secrets["VECTORSTORE_ID"],
                             model_response=assistant_response
                         )
                         
