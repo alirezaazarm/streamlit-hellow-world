@@ -84,6 +84,42 @@ def wait_for_runs_to_complete(thread_id):
             else:
                 print(f"Run {run.id} still active after {max_attempts} attempts.")
 
+def sidebar_thread_management():
+    st.sidebar.title("Threads")
+    
+    # Create new thread
+    with st.sidebar.expander("Create New Thread", expanded=False):
+        thread_name = st.text_input("Thread Name")
+        if st.button("Create Thread"):
+            if thread_name:
+                try:
+                    thread_id = create_new_thread(thread_name)
+                    st.session_state.current_thread_id = thread_id
+                    st.session_state.messages = []
+                    st.success(f"Created new thread: {thread_name}")
+                    st.experimental_rerun()
+                except ValueError as e:
+                    st.error(str(e))
+            else:
+                st.error("Please enter a thread name")
+    
+    # List existing threads
+    threads = load_threads()
+    st.sidebar.markdown("### Your Threads")
+    
+    sorted_threads = sorted(
+        threads.items(),
+        key=lambda x: x[1]['created_at'],
+        reverse=True
+    )
+    
+    for thread_id, thread_info in sorted_threads:
+        if st.sidebar.button(thread_info['name'], key=thread_id):
+            st.session_state.current_thread_id = thread_id
+            st.session_state.messages = load_chat_history(thread_id)
+            st.experimental_rerun()
+
+
 def verify_output_against_vector_store(client, vector_store_id, model_response):
     query = model_response
     try:
