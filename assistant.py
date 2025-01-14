@@ -47,7 +47,7 @@ def run_assistant(thread_id, assistant_id):
                 arguments = json.loads(tool_call['function']['arguments'])
 
                 if func_name == "add_order_row":
-                    required_params = ['first_name', 'last_name', 'address', 'phone', 'product', 'price', 'how_many']
+                    required_params = ['first_name', 'last_name', 'address', 'phone', 'product', 'how_many'] # , 'price'
                     missing_params = [param for param in required_params if param not in arguments]
 
                     if missing_params:
@@ -60,7 +60,7 @@ def run_assistant(thread_id, assistant_id):
                         address=arguments['address'],
                         phone=arguments['phone'],
                         product=arguments['product'],
-                        price=arguments['price'],
+                 #      price=arguments['price'],
                         how_many=arguments['how_many']
                     )
                     tool_outputs.append({
