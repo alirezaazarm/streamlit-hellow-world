@@ -6,7 +6,7 @@ def format_datetime(iso_datetime):
     dt = datetime.fromisoformat(iso_datetime)
     return dt.strftime("%Y-%m-%d %H:%M")
 
-def add_order_row(file_path, first_name, last_name, address, phone, product, price, how_many):
+def add_order_row(file_path, first_name, last_name, address, phone, product, how_many): #, price
     try:
         df = pd.read_json(file_path, dtype={
             'first_name': str,
@@ -14,12 +14,12 @@ def add_order_row(file_path, first_name, last_name, address, phone, product, pri
             'address': str,
             'phone': str,  # Ensure phone is read as string
             'product': str,
-            'price': str,
+          # 'price': str,
             'date': str,
             'how_many': int
         })
     except FileNotFoundError:
-        df = pd.DataFrame(columns=['first_name', 'last_name', 'address', 'phone', 'product', 'price', 'date', 'how_many'])
+        df = pd.DataFrame(columns=['first_name', 'last_name', 'address', 'phone', 'product', 'date', 'how_many']) # , 'price'
 
     now = datetime.now()
     date_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -30,7 +30,7 @@ def add_order_row(file_path, first_name, last_name, address, phone, product, pri
         'address': str(address),
         'phone': str(phone),
         'product': str(product),
-        'price': str(price),
+    #    'price': str(price),
         'date': date_time_str,
         'how_many': int(how_many)
     }
