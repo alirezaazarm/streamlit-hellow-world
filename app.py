@@ -97,16 +97,39 @@ def sidebar_thread_management():
                     st.session_state.current_thread_id = thread_id
                     st.session_state.messages = []
                     st.success(f"Created new thread: {thread_name}")
-                    st.experimental_rerun()
+                    st.rerun()
                 except ValueError as e:
                     st.error(str(e))
             else:
                 st.error("Please enter a thread name")
-    
+
     # List existing threads
     threads = load_threads()
     st.sidebar.markdown("### Your Threads")
     
+    # Custom CSS for thread buttons
+    st.markdown("""
+        <style>
+        .thread-timestamp {
+            font-size: 12px;
+            color: #666;
+            text-align: right;
+            padding-top: 4px;
+        }
+        .thread-container {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: 8px;
+        }
+        .thread-name {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # Sort threads by creation date (newest first)
     sorted_threads = sorted(
         threads.items(),
         key=lambda x: x[1]['created_at'],
@@ -114,10 +137,27 @@ def sidebar_thread_management():
     )
     
     for thread_id, thread_info in sorted_threads:
-        if st.sidebar.button(thread_info['name'], key=thread_id):
-            st.session_state.current_thread_id = thread_id
-            st.session_state.messages = load_chat_history(thread_id)
-            st.experimental_rerun()
+        # Create a container for each thread
+        with st.sidebar.container():
+            # Use HTML for custom styling
+            st.markdown(f"""
+                <div class="thread-container" onclick="window.location.href='#{thread_id}'">
+                    <div class="thread-name">{thread_info['name']}</div>
+                    <div class="thread-timestamp">{format_datetime(thread_info['created_at'])}</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # Hidden button for functionality
+            if st.button(
+                thread_info['name'],
+                key=thread_id,
+                use_container_width=True,
+                type="secondary"
+            ):
+                st.session_state.current_thread_id = thread_id
+                st.session_state.messages = load_chat_history(thread_id)
+                st.rerun()
+
 
 
 def verify_output_against_vector_store(client, vector_store_id, model_response):
