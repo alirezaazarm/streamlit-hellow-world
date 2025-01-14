@@ -42,6 +42,20 @@ def save_threads(threads):
     with open(thread_file, 'w') as f:
         json.dump(threads, f)
 
+def load_messages(thread_id):
+    messages_file = f"./drive/messages_{thread_id}.json"
+    if os.path.exists(messages_file):
+        with open(messages_file, 'r') as f:
+            return json.load(f)
+    else:
+        return []
+
+def save_messages(thread_id, messages):
+    messages_file = f"./drive/messages_{thread_id}.json"
+    os.makedirs(os.path.dirname(messages_file), exist_ok=True)
+    with open(messages_file, 'w') as f:
+        json.dump(messages, f)
+
 def create_new_thread():
     thread_name = st.text_input("Enter the name for the new thread:")
     if st.button("Create"):
@@ -51,12 +65,12 @@ def create_new_thread():
             thread = client.beta.threads.create()
             st.session_state.threads[thread_name] = thread.id
             save_threads(st.session_state.threads)
+            save_messages(thread.id, [])
             st.session_state.current_thread_name = thread_name
             st.session_state.current_thread_id = thread.id
-            st.session_state.messages = []
-            st.success(f"Thread '{thread_name}' created successfully.")
+            st.session_state.messages = load_messages(thread.id)
             st.session_state.image_uploaded = False
-            st.rerun()
+            st.sidebar.rerun()  # Refresh the sidebar to update the thread list
 
 def main_page():
     st.title("Image Search with CLIP & AI Chat")
@@ -70,6 +84,7 @@ def main_page():
         selected_thread = st.sidebar.selectbox("Select a thread", thread_names)
         st.session_state.current_thread_name = selected_thread
         st.session_state.current_thread_id = threads[selected_thread]
+        st.session_state.messages = load_messages(st.session_state.current_thread_id)
     else:
         st.sidebar.info("No threads available. Create a new one.")
 
@@ -149,6 +164,7 @@ def main_page():
                                         "role": "assistant",
                                         "content": assistant_response
                                     })
+                                    save_messages(st.session_state.current_thread_id, st.session_state.messages)
                                     st.session_state.is_request_active = False  # Reset the flag
                                 else:
                                     st.warning("No response received from the assistant.")
@@ -212,6 +228,7 @@ def main_page():
                             # Render assistant's response in chat UI
                             with st.chat_message("assistant"):
                                 st.write(assistant_response)
+                            save_messages(st.session_state.current_thread_id, st.session_state.messages)
                             st.session_state.is_request_active = False  # Reset the flag
                         else:
                             st.warning("No response received from the assistant.")
