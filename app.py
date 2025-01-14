@@ -5,9 +5,6 @@ import os
 from openai import OpenAI
 import json
 from PIL import Image
-import time
-from assistant_functions import add_order_row
-from datetime import datetime
 import uuid
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -58,15 +55,18 @@ def create_new_thread():
     if st.button("Create"):
         if thread_name.strip() == "":
             st.warning("Please enter a valid thread name.")
+        elif thread_name in st.session_state.threads:
+            st.warning("A thread with this name already exists. Please choose a different name.")
         else:
-            thread_id = str(uuid.uuid4())
+            thread_id = str(uuid.uuid4())  # Generate a unique thread ID
             st.session_state.threads[thread_name] = thread_id
-            save_threads(st.session_state.threads)
-            save_messages(thread_id, [])
+            save_threads(st.session_state.threads)  # Save threads to file
+            save_messages(thread_id, [])  # Initialize empty messages for the new thread
             st.session_state.current_thread_name = thread_name
             st.session_state.current_thread_id = thread_id
-            st.session_state.messages = load_messages(thread_id)
-            st.experimental_rerun()
+            st.session_state.messages = []  # Reset messages for the new thread
+            st.success(f"Thread '{thread_name}' created successfully!")
+            st.experimental_rerun()  # Rerun the app to refresh the sidebar
 
 def main_page():
     st.title("Image Search with CLIP & AI Chat")
@@ -78,9 +78,10 @@ def main_page():
 
     if thread_names:
         selected_thread = st.sidebar.selectbox("Select a thread", thread_names)
-        st.session_state.current_thread_name = selected_thread
-        st.session_state.current_thread_id = threads[selected_thread]
-        st.session_state.messages = load_messages(st.session_state.current_thread_id)
+        if selected_thread != st.session_state.current_thread_name:
+            st.session_state.current_thread_name = selected_thread
+            st.session_state.current_thread_id = threads[selected_thread]
+            st.session_state.messages = load_messages(st.session_state.current_thread_id)
     else:
         st.sidebar.info("No threads available. Create a new one.")
 
