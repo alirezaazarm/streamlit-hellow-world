@@ -1,6 +1,11 @@
 import pandas as pd
 from datetime import datetime
 
+def format_datetime(iso_datetime):
+    """Convert ISO datetime string to a formatted string."""
+    dt = datetime.fromisoformat(iso_datetime)
+    return dt.strftime("%Y-%m-%d %H:%M")
+
 def add_order_row(file_path, first_name, last_name, address, phone, product, price, how_many):
     try:
         df = pd.read_json(file_path, dtype={
