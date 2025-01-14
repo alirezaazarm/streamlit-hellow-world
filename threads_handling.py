@@ -1,3 +1,4 @@
+from assistant_functions import format_datetime
 from datetime import datetime
 from init import client
 import streamlit as st
