@@ -48,15 +48,19 @@ def create_new_thread():
         if thread_name.strip() == "":
             st.warning("Please enter a thread name.")
         else:
-            thread = client.beta.threads.create()
-            st.session_state.threads[thread_name] = thread.id
-            save_threads(st.session_state.threads)
-            st.session_state.current_thread_id = thread.id
-            st.success(f"Thread '{thread_name}' created.")
-            st.rerun()
+            try:
+                thread = client.beta.threads.create()
+                st.session_state.threads[thread_name] = thread.id
+                save_threads(st.session_state.threads)
+                st.session_state.current_thread_id = thread.id
+                st.success(f"Thread '{thread_name}' created.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error creating thread: {e}")
 
 def main_page():
     st.title("Image Search with CLIP & AI Chat")
+    st.session_state.threads = load_threads()  # Reload threads
 
     # Sidebar for thread selection
     st.sidebar.title("Threads")
