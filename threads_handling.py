@@ -40,7 +40,7 @@ def create_new_thread(thread_name):
     if thread_name.lower() in existing_names:
         raise ValueError("A thread with this name already exists")
 
-    thread = client.beta.threads.create(tool_resources={"file_search": {"vector_store_ids": [st.secrets["VECTORSTORE_ID "]] }} )
+    thread = client.beta.threads.create(tool_resources={"file_search": {"vector_store_ids": [st.secrets["VECTORSTORE_ID"]] }} )
     threads[thread.id] = {
         "name": thread_name,
         "created_at": datetime.now().isoformat()
